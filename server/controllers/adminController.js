@@ -42,19 +42,59 @@ export const getAllShows = async (req, res) => {
   }
 };
 
-// API to get all bookings
+// API to get all bookings - SỬA ĐỂ XỬ LÝ USER ID DẠNG STRING
 export const getAllBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find({})
-      .populate("user")
+    // Lấy bookings trước
+    const rawBookings = await Booking.find({})
       .populate({
         path: "show",
         populate: { path: "movie" },
       })
       .sort({ createdAt: -1 });
-    res.json({ success: true, bookings });
+
+    // Xử lý populate user thủ công vì user ID là string
+    const bookingsWithUser = await Promise.all(
+      rawBookings.map(async (booking) => {
+        let userInfo = null;
+
+        try {
+          // Thử tìm user với string ID (cho Clerk users)
+          userInfo = await User.findOne({
+            $or: [
+              { _id: booking.user }, // Thử ObjectId
+              { clerkId: booking.user }, // Thử Clerk ID nếu bạn có field này
+              { userId: booking.user }, // Hoặc field khác bạn dùng để lưu Clerk ID
+            ],
+          });
+
+          // Nếu không tìm thấy, tạo object user giả với thông tin cơ bản
+          if (!userInfo) {
+            userInfo = {
+              _id: booking.user,
+              name: `User ${booking.user.slice(-8)}`, // Lấy 8 ký tự cuối làm tên
+              email: null,
+            };
+          }
+        } catch (error) {
+          console.warn(`Cannot populate user ${booking.user}:`, error.message);
+          userInfo = {
+            _id: booking.user,
+            name: `User ${booking.user.slice(-8)}`,
+            email: null,
+          };
+        }
+
+        return {
+          ...booking.toObject(),
+          user: userInfo,
+        };
+      })
+    );
+
+    res.json({ success: true, bookings: bookingsWithUser });
   } catch (error) {
-    console.error(error);
+    console.error("Error fetching bookings:", error);
     res.json({ success: false, message: error.message });
   }
 };

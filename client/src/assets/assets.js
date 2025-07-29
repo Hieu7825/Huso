@@ -16,20 +16,20 @@ export const assets = {
 
 export const dummyTrailers = [
   {
-    image: "https://img.youtube.com/vi/WpW36ldAqnM/maxresdefault.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=WpW36ldAqnM",
+    image: "https://img.youtube.com/vi/lLD5xMTvCX4/maxresdefault.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=lLD5xMTvCX4", // Promotion Reel 2025
   },
   {
-    image: "https://img.youtube.com/vi/-sAOWhvheK8/maxresdefault.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=-sAOWhvheK8",
+    image: "https://img.youtube.com/vi/uDTdUVHa5Ow/maxresdefault.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=uDTdUVHa5Ow", // Official Trailer via Crunchyroll announcement
   },
   {
-    image: "https://img.youtube.com/vi/1pHDWnXmK7Y/maxresdefault.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=1pHDWnXmK7Y",
+    image: "https://img.youtube.com/vi/wPFeBxt7VXI/maxresdefault.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=wPFeBxt7VXI", // Main Trailer / English Sub version
   },
   {
-    image: "https://img.youtube.com/vi/umiKiW4En9g/maxresdefault.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=umiKiW4En9g",
+    image: "https://img.youtube.com/vi/nKS3mF_D7dM/maxresdefault.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=nKS3mF_D7dM", // Official trailer post from Crunchyroll
   },
 ];
 

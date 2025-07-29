@@ -16,12 +16,14 @@ import Dashboard from "./pages/admin/Dashboard";
 import { useAppContext } from "./context/AppContext";
 import { SignIn } from "@clerk/clerk-react";
 import Loading from "./components/Loading";
+import Background from "./components/BackGround";
 
 const App = () => {
   const isAdminRoute = useLocation().pathname.startsWith("/admin");
   const { user } = useAppContext();
   return (
     <>
+      <Background />
       <Toaster />
       {!isAdminRoute && <Navbar />}
       <Routes>
