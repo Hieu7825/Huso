@@ -32,7 +32,7 @@ const Navbar = () => {
       }`}
     >
       <Link to="/" className="max-md:flex-1">
-        <img src={assets.logo} alt="" className="w-36 h-auto" />
+        <img src={assets.logo} alt="" className="w-24 h-auto" />
       </Link>
       <div
         className={`max-md:absolute max-md:top-0 max-md:left-0 max-md:font-medium
