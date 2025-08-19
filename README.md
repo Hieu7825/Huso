@@ -35,10 +35,14 @@ npm install
 
 # Chạy frontend
 
+```bash
 cd client
 npm run dev
+```
 
 # Chạy backend
 
+```bash
 cd server
 npm run server
+```
