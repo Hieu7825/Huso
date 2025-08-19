@@ -30,9 +30,8 @@ Clone repo về máy:
 ```bash
 git clone <repo-url>
 cd TicketBooking
-```
-
 npm install
+```
 
 # Chạy frontend
 
