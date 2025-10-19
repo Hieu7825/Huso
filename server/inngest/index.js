@@ -1,8 +1,14 @@
+// server/inngest/index.js
 import { Inngest } from "inngest";
 import User from "../models/User.js";
 import Booking from "../models/Booking.js";
 import Show from "../models/Show.js";
 import sendEmail from "../configs/nodeMailer.js";
+import {
+  sendBookingConfirmation,
+  sendShowReminder,
+  sendBulkNewShowNotifications,
+} from "./emailHelpers.js";
 
 // Create a client to send and receive events
 export const inngest = new Inngest({ id: "movie-ticket-booking" });
@@ -33,6 +39,7 @@ const syncUserDeletion = inngest.createFunction(
     await User.findByIdAndDelete(id);
   }
 );
+
 // Inngest functions to update user data from a database
 const syncUserUpdation = inngest.createFunction(
   { id: "update-user-with-clerk" },
@@ -49,7 +56,8 @@ const syncUserUpdation = inngest.createFunction(
     await User.findByIdAndUpdate(id, userData);
   }
 );
-// Inngest Function to cancel booking and release seats of show after 10 minutes of booking created if payment is not made
+
+// Inngest Function to cancel booking and release seats
 const releaseSeatsAndDeleteBooking = inngest.createFunction(
   { id: "release-seats-delete-booking" },
   { event: "app/checkpayment" },
@@ -60,6 +68,7 @@ const releaseSeatsAndDeleteBooking = inngest.createFunction(
     await step.run("check-payment-status", async () => {
       const bookingId = event.data.bookingId;
       const booking = await Booking.findById(bookingId);
+
       // If payment is not made, release seats and delete booking
       if (!booking.isPaid) {
         const show = await Show.findById(booking.show);
@@ -73,11 +82,12 @@ const releaseSeatsAndDeleteBooking = inngest.createFunction(
     });
   }
 );
-// Inngest Function to send email when user books a show
+
+// Inngest Function to send email when user books a show - IMPROVED
 const sendBookingConfirmationEmail = inngest.createFunction(
   { id: "send-booking-confirmation-email" },
   { event: "app/show.booked" },
-  async ({ event, step }) => {
+  async ({ event }) => {
     const { bookingId } = event.data;
 
     const booking = await Booking.findById(bookingId)
@@ -86,29 +96,13 @@ const sendBookingConfirmationEmail = inngest.createFunction(
         populate: { path: "movie", model: "Movie" },
       })
       .populate("user");
-    await sendEmail({
-      to: booking.user.email,
-      subject: `Payment Confirmation: "${booking.show.movie.title}" booked!`,
-      body: `<div style="font-family: Arial, sans-serif; line-height: 1.5;">
-      <h2>Hi ${booking.user.name},</h2>
-      <p>Your booking for <strong style="color: #F84565;">"${
-        booking.show.movie.title
-      }"</strong> is confirmed.</p>
-  <p>
-    <strong>Date:</strong> ${new Date(
-      booking.show.showDateTime
-    ).toLocaleDateString("en-US", { timeZone: "Asia/Kolkata" })}<br/>
-    <strong>Time:</strong> ${new Date(
-      booking.show.showDateTime
-    ).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata" })}
-  </p>
-  <p>Enjoy the show! 🍿</p>
-  <p>Thanks for booking with us!<br/>- Huso Team</p>
-</div>`,
-    });
+
+    // Sử dụng helper function
+    await sendBookingConfirmation({ booking });
   }
 );
-// Inngest Function to send reminders
+
+// Inngest Function to send reminders - IMPROVED
 const sendShowReminders = inngest.createFunction(
   { id: "send-show-reminders" },
   { cron: "0 */8 * * *" }, // Every 8 hours
@@ -134,50 +128,32 @@ const sendShowReminders = inngest.createFunction(
         const users = await User.find({ _id: { $in: userIds } }).select(
           "name email"
         );
+
         for (const user of users) {
           tasks.push({
-            userEmail: user.email,
-            userName: user.name,
-            movieTitle: show.movie.title,
+            user,
+            movie: show.movie,
             showTime: show.showTime,
           });
         }
       }
       return tasks;
     });
+
     if (reminderTasks.length === 0) {
       return { sent: 0, message: "No reminders to send." };
     }
+
     // Send reminder emails
     const results = await step.run("send-all-reminders", async () => {
       return await Promise.allSettled(
-        reminderTasks.map((task) =>
-          sendEmail({
-            to: task.userEmail,
-            subject: `Reminder: Your movie "${task.movieTitle}" starts soon!`,
-            body: `<div style="font-family: Arial, sans-serif; padding: 20px;">
-  <h2>Hello ${task.userName},</h2>
-  <p>This is a quick reminder that your movie:</p>
-  <h3 style="color: #F84565;">"${task.movieTitle}"</h3>
-  <p>
-    is scheduled for <strong>${new Date(task.showTime).toLocaleDateString(
-      "en-US",
-      { timeZone: "Asia/Kolkata" }
-    )}</strong> at <strong>${new Date(task.showTime).toLocaleTimeString(
-              "en-US",
-              { timeZone: "Asia/Kolkata" }
-            )}</strong>.
-  </p>
-  <p>It starts in approximately <strong>8 hours</strong> - make sure you're ready!</p>
-  <br/>
-  <p>Enjoy the show!<br/>Huso Team</p>
-</div>`,
-          })
-        )
+        reminderTasks.map((task) => sendShowReminder(task))
       );
     });
+
     const sent = results.filter((r) => r.status === "fulfilled").length;
     const failed = results.length - sent;
+
     return {
       sent,
       failed,
@@ -185,38 +161,29 @@ const sendShowReminders = inngest.createFunction(
     };
   }
 );
-// Inngest Function to send notifications when a new show is added
+
+// Inngest Function to send notifications when a new show is added - IMPROVED
 const sendNewShowNotifications = inngest.createFunction(
   { id: "send-new-show-notifications" },
   { event: "app/show.added" },
   async ({ event }) => {
-    const { movieTitle } = event.data;
+    const { movieTitle, movieDescription } = event.data;
 
     const users = await User.find({});
 
-    for (const user of users) {
-      const userEmail = user.email;
-      const userName = user.name;
+    // Sử dụng bulk send thay vì loop
+    const result = await sendBulkNewShowNotifications({
+      users,
+      movieTitle,
+      movieDescription,
+    });
 
-      const subject = `🎬 New Show Added: ${movieTitle}`;
-      const body = `<div style="font-family: Arial, sans-serif; padding: 20px;"
->
-  <h2>Hi ${userName},</h2>
-  <p>We've just added a new show to our library:</p>
-  <h3 style="color: #F84565;">"${movieTitle}"</h3>
-  <p>Visit our website</p>
-  <br/>
-  <p>Thanks,<br/>Huso Team</p>
-</div>`;
-      await sendEmail({
-        to: userEmail,
-        subject,
-        body,
-      });
-    }
-    return { message: "Notifications sent." };
+    return {
+      message: `Sent ${result.successful} notification(s), ${result.failed} failed.`,
+    };
   }
 );
+
 export const functions = [
   syncUserCreation,
   syncUserDeletion,
