@@ -1,3 +1,4 @@
+import { clerkClient } from "@clerk/express";
 import Booking from "../models/Booking.js";
 import Show from "../models/Show.js";
 import User from "../models/User.js";
@@ -42,59 +43,105 @@ export const getAllShows = async (req, res) => {
   }
 };
 
-// API to get all bookings - SỬA ĐỂ XỬ LÝ USER ID DẠNG STRING
+// API to get all bookings - ✅ ĐÃ CẬP NHẬT
 export const getAllBookings = async (req, res) => {
   try {
-    // Lấy bookings trước
-    const rawBookings = await Booking.find({})
+    const bookings = await Booking.find({})
       .populate({
         path: "show",
         populate: { path: "movie" },
       })
       .sort({ createdAt: -1 });
 
-    // Xử lý populate user thủ công vì user ID là string
-    const bookingsWithUser = await Promise.all(
-      rawBookings.map(async (booking) => {
-        let userInfo = null;
+    // ⭐ Format lại để frontend dùng được (lấy userName và userEmail từ DB)
+    const formattedBookings = bookings.map((booking) => ({
+      ...booking.toObject(),
+      user: {
+        _id: booking.user,
+        name: booking.userName || "N/A",
+        email: booking.userEmail || "N/A",
+      },
+    }));
 
-        try {
-          // Thử tìm user với string ID (cho Clerk users)
-          userInfo = await User.findOne({
-            $or: [
-              { _id: booking.user }, // Thử ObjectId
-              { clerkId: booking.user }, // Thử Clerk ID nếu bạn có field này
-              { userId: booking.user }, // Hoặc field khác bạn dùng để lưu Clerk ID
-            ],
-          });
-
-          // Nếu không tìm thấy, tạo object user giả với thông tin cơ bản
-          if (!userInfo) {
-            userInfo = {
-              _id: booking.user,
-              name: `User ${booking.user.slice(-8)}`, // Lấy 8 ký tự cuối làm tên
-              email: null,
-            };
-          }
-        } catch (error) {
-          console.warn(`Cannot populate user ${booking.user}:`, error.message);
-          userInfo = {
-            _id: booking.user,
-            name: `User ${booking.user.slice(-8)}`,
-            email: null,
-          };
-        }
-
-        return {
-          ...booking.toObject(),
-          user: userInfo,
-        };
-      })
-    );
-
-    res.json({ success: true, bookings: bookingsWithUser });
+    res.json({ success: true, bookings: formattedBookings });
   } catch (error) {
     console.error("Error fetching bookings:", error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+export const migrateOldBookings = async (req, res) => {
+  try {
+    // Tìm các booking chưa có userName
+    const oldBookings = await Booking.find({
+      $or: [
+        { userName: { $exists: false } },
+        { userName: null },
+        { userName: "" },
+      ],
+    });
+
+    console.log(`🔍 Found ${oldBookings.length} bookings to update`);
+
+    if (oldBookings.length === 0) {
+      return res.json({
+        success: true,
+        message:
+          "No bookings need updating. All bookings already have userName.",
+        total: 0,
+        updated: 0,
+        failed: 0,
+      });
+    }
+
+    let updated = 0;
+    let failed = 0;
+    const errors = [];
+
+    for (const booking of oldBookings) {
+      try {
+        // Lấy thông tin user từ Clerk
+        const clerkUser = await clerkClient.users.getUser(booking.user);
+
+        const fullName = `${clerkUser.firstName || ""} ${
+          clerkUser.lastName || ""
+        }`.trim();
+        const userName =
+          fullName ||
+          clerkUser.username ||
+          clerkUser.emailAddresses[0]?.emailAddress.split("@")[0] ||
+          "User";
+
+        // Cập nhật booking
+        booking.userName = userName;
+        booking.userEmail = clerkUser.emailAddresses[0]?.emailAddress || "";
+        await booking.save();
+
+        updated++;
+        console.log(`✅ Updated booking ${booking._id} - User: ${userName}`);
+      } catch (error) {
+        failed++;
+        const errorMsg = `Booking ${booking._id}: ${error.message}`;
+        console.error(`❌ ${errorMsg}`);
+        errors.push(errorMsg);
+
+        // Nếu không lấy được từ Clerk, đặt giá trị mặc định
+        booking.userName = `User ${booking.user.slice(-8)}`;
+        booking.userEmail = "N/A";
+        await booking.save();
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Migration completed: ${updated} updated successfully, ${failed} failed`,
+      total: oldBookings.length,
+      updated,
+      failed,
+      errors: failed > 0 ? errors : undefined,
+    });
+  } catch (error) {
+    console.error("❌ Migration error:", error);
     res.json({ success: false, message: error.message });
   }
 };
