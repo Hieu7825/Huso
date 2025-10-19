@@ -60,10 +60,32 @@ npm install
 Create `.env` in server directory:
 
 ```env
-PORT=5000
-MONGODB_URI=your_mongodb_uri
-TMDB_API_KEY=your_tmdb_api_key
-JWT_SECRET=your_jwt_secret
+# Server Configuration
+PORT=5000                    # Port number for the server
+NODE_ENV=development        # Environment mode (development/production)
+
+# Database Configuration
+MONGODB_URI=your_mongodb_uri # MongoDB connection string
+# Example: mongodb://localhost:27017/ticketbooking
+# For MongoDB Atlas: mongodb+srv://<username>:<password>@cluster.mongodb.net/ticketbooking
+
+# Authentication
+JWT_SECRET=your_jwt_secret  # Secret key for JWT token generation
+JWT_EXPIRE=7d              # JWT token expiration time
+
+# TMDB API Configuration
+TMDB_API_KEY=your_tmdb_api_key  # TMDB API key from https://www.themoviedb.org/settings/api
+# Example: eyJhbGciOiJIUzI1NiJ9...
+
+# Email Configuration (Optional)
+SMTP_HOST=smtp.gmail.com    # SMTP server host
+SMTP_PORT=587              # SMTP server port
+SMTP_USER=your_email       # SMTP username
+SMTP_PASS=your_password    # SMTP password
+
+# Payment Gateway (Optional)
+STRIPE_SECRET_KEY=your_stripe_secret_key
+STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
 ```
 
 Create `.env` in client directory:
