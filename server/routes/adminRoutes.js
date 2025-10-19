@@ -5,6 +5,7 @@ import {
   getAllShows,
   getDashboardData,
   isAdmin,
+  migrateOldBookings,
 } from "../controllers/adminController.js";
 
 const adminRouter = express.Router();
@@ -14,4 +15,5 @@ adminRouter.get("/dashboard", protectAdmin, getDashboardData);
 adminRouter.get("/all-shows", protectAdmin, getAllShows);
 adminRouter.get("/all-bookings", protectAdmin, getAllBookings);
 
+adminRouter.post("/migrate-bookings", protectAdmin, migrateOldBookings);
 export default adminRouter;
