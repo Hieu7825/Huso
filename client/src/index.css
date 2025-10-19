@@ -227,6 +227,25 @@ body {
   background-clip: text;
 }
 
+.gradient-favorite {
+  background: linear-gradient(
+    to right,
+    #881337,
+    /* rose-900 */ #e11d48,
+    /* rose-600 */ #ec4899,
+    /* pink-500 */ #f472b6,
+    /* pink-400 */ #e11d48,
+    /* rose-600 */ #f472b6,
+    /* pink-400 */ #ec4899,
+    /* pink-500 */ #e11d48,
+    /* rose-600 */ #881337 /* rose-900 */
+  );
+  background-size: 200%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: animate-gradient 2.5s linear infinite;
+}
 /* ============================================
    FADE ANIMATIONS
    ============================================ */
