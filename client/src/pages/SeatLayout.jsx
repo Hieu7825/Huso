@@ -249,17 +249,6 @@ const SeatLayout = () => {
           </p>
         )}
       </div>
-
-      <style jsx>{`
-        @keyframes shimmer {
-          0% {
-            transform: translateX(-100%);
-          }
-          100% {
-            transform: translateX(100%);
-          }
-        }
-      `}</style>
     </div>
   ) : (
     <Loading />
