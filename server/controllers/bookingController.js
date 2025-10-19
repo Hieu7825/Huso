@@ -2,6 +2,7 @@ import Show from "../models/Show.js";
 import Booking from "../models/Booking.js";
 import stripe from "stripe";
 import { inngest } from "../inngest/index.js";
+import { clerkClient } from "@clerk/express";
 
 // Function to check availability of selected seats for a movie
 const checkSeatsAvailability = async (showId, selectedSeats) => {
@@ -10,7 +11,6 @@ const checkSeatsAvailability = async (showId, selectedSeats) => {
     if (!showData) return false;
 
     const occupiedSeats = showData.occupiedSeats;
-
     const isAnySeatTaken = selectedSeats.some((seat) => occupiedSeats[seat]);
 
     return !isAnySeatTaken;
@@ -25,6 +25,7 @@ export const createBooking = async (req, res) => {
     const { userId } = req.auth();
     const { showId, selectedSeats } = req.body;
     const { origin } = req.headers;
+
     // Check if the seat is available for the selected show
     const isAvailable = await checkSeatsAvailability(showId, selectedSeats);
 
@@ -34,12 +35,26 @@ export const createBooking = async (req, res) => {
         message: "Selected Seats are not available.",
       });
     }
+
     // Get the show details
     const showData = await Show.findById(showId).populate("movie");
 
-    // Create a new booking
+    // ⭐ LẤY THÔNG TIN USER TỪ CLERK
+    const clerkUser = await clerkClient.users.getUser(userId);
+    const fullName = `${clerkUser.firstName || ""} ${
+      clerkUser.lastName || ""
+    }`.trim();
+    const userName =
+      fullName ||
+      clerkUser.username ||
+      clerkUser.emailAddresses[0]?.emailAddress.split("@")[0] ||
+      "User";
+
+    // ⭐ TẠO BOOKING VỚI THÔNG TIN USER
     const booking = await Booking.create({
       user: userId,
+      userName: userName, // ← Thêm tên user
+      userEmail: clerkUser.emailAddresses[0]?.emailAddress || "", // ← Thêm email user
       show: showId,
       amount: showData.showPrice * selectedSeats.length,
       bookedSeats: selectedSeats,
@@ -55,7 +70,7 @@ export const createBooking = async (req, res) => {
     // Stripe Gateway Initialize
     const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY);
 
-    // Creating line items to for Stripe|
+    // Creating line items to for Stripe
     const line_items = [
       {
         price_data: {
@@ -68,6 +83,7 @@ export const createBooking = async (req, res) => {
         quantity: 1,
       },
     ];
+
     const session = await stripeInstance.checkout.sessions.create({
       success_url: `${origin}/loading/my-bookings`,
       cancel_url: `${origin}/my-bookings`,
@@ -78,15 +94,18 @@ export const createBooking = async (req, res) => {
       },
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // Expires in 30 minutes
     });
+
     booking.paymentLink = session.url;
     await booking.save();
-    // Run Inngest Sheduler Function to check payment status after 10 minutes
+
+    // Run Inngest Scheduler Function to check payment status after 10 minutes
     await inngest.send({
       name: "app/checkpayment",
       data: {
         bookingId: booking._id.toString(),
       },
     });
+
     res.json({ success: true, url: session.url });
   } catch (error) {
     console.log(error.message);
