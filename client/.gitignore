@@ -12,6 +12,28 @@ dist
 dist-ssr
 *.local
 
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Cache
+.cache
+.parcel-cache
+.next
+.nuxt
+.vuepress/dist
+
+# Temporary files
+.temp
+.tmp
+.swp
+.swap
+.bak
+.tmp
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
