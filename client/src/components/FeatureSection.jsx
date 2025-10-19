@@ -22,7 +22,7 @@ const FeatureSection = () => {
             <Sparkles className="w-3 h-3 text-yellow-400 absolute -top-1 -right-1 animate-bounce" />
           </div>
           <div className="relative">
-            <h2 className="gradient-text text-2xl md:text-3xl font-bold tracking-wide uppercase letter-spacing-2 transform hover:scale-105 transition-all duration-300">
+            <h2 className="gradient text-2xl md:text-3xl font-bold tracking-wide uppercase letter-spacing-2 transform hover:scale-105 transition-all duration-300">
               🔥 Now Showing
             </h2>
             <div className="absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r from-red-600 via-red-500 to-transparent animate-pulse"></div>
