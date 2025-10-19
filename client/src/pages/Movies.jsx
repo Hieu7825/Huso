@@ -27,7 +27,7 @@ const Movies = () => {
             <Sparkles className="w-4 h-4 text-yellow-400 absolute -top-1 -right-1 animate-bounce" />
           </div>
           <div className="relative">
-            <h2 className="gradient-text text-4xl md:text-5xl font-bold tracking-wide uppercase letter-spacing-2 transform hover:scale-105 transition-all duration-300">
+            <h2 className="gradient text-4xl md:text-5xl font-bold tracking-wide uppercase letter-spacing-2 transform hover:scale-105 transition-all duration-300">
               🎬 Now Showing
             </h2>
             <div className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-red-600 via-red-500 to-red-600 animate-pulse rounded-full"></div>
